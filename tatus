@@ -1,0 +1,130 @@
+[1mdiff --git a/.gitignore b/.gitignore[m
+[1mindex 5380010..3380d0d 100644[m
+[1m--- a/.gitignore[m
+[1m+++ b/.gitignore[m
+[36m@@ -3,3 +3,4 @@[m [mgeckodriver.log[m
+ virtualenv[m
+ __pycache__[m
+ *.pyc[m
+[32m+[m[32m/static[m
+[1mdiff --git a/functional_tests/tests.py b/functional_tests/tests.py[m
+[1mindex bfac3b0..f502a68 100644[m
+[1m--- a/functional_tests/tests.py[m
+[1m+++ b/functional_tests/tests.py[m
+[36m@@ -1,4 +1,4 @@[m
+[31m-from django.test import LiveServerTestCase[m
+[32m+[m[32mfrom django.contrib.staticfiles.testing import StaticLiveServerTestCase[m
+ from selenium import webdriver[m
+ from selenium.common.exceptions import WebDriverException[m
+ from selenium.webdriver.common.keys import Keys[m
+[36m@@ -7,7 +7,7 @@[m [mimport time[m
+ MAX_WAIT = 10[m
+ [m
+ [m
+[31m-class NewVisitorTest(LiveServerTestCase):[m
+[32m+[m[32mclass NewVisitorTest(StaticLiveServerTestCase):[m
+ [m
+     def setUp(self):[m
+         self.browser = webdriver.Firefox()[m
+[36m@@ -115,3 +115,29 @@[m [mclass NewVisitorTest(LiveServerTestCase):[m
+ [m
+         # Satisfied, they both go back to sleep[m
+ [m
+[32m+[m
+[32m+[m[32m    def test_layout_and_styling(self):[m
+[32m+[m[32m        # Edith goes to the home page[m
+[32m+[m[32m        self.browser.get(self.live_server_url)[m
+[32m+[m[32m        self.browser.set_window_size(1024, 768)[m
+[32m+[m
+[32m+[m[32m        # She notices the input box is nicely centered[m
+[32m+[m[32m        inputbox = self.browser.find_element_by_id('id_new_item')[m
+[32m+[m[32m        self.assertAlmostEqual([m
+[32m+[m[32m            inputbox.location['x'] + inputbox.size['width'] / 2,[m
+[32m+[m[32m            512,[m
+[32m+[m[32m            delta=10[m
+[32m+[m[32m        )[m
+[32m+[m
+[32m+[m[32m        # She starts a new list and sees the input is nicely[m
+[32m+[m[32m        # centered there too[m
+[32m+[m[32m        inputbox.send_keys('testing')[m
+[32m+[m[32m        inputbox.send_keys(Keys.ENTER)[m
+[32m+[m[32m        self.wait_for_row_in_list_table('1: testing')[m
+[32m+[m[32m        inputbox = self.browser.find_element_by_id('id_new_item')[m
+[32m+[m[32m        self.assertAlmostEqual([m
+[32m+[m[32m            inputbox.location['x'] + inputbox.size['width'] / 2,[m
+[32m+[m[32m            512,[m
+[32m+[m[32m            delta=10[m
+[32m+[m[32m        )[m
+[32m+[m
+[1mdiff --git a/lists/templates/home.html b/lists/templates/home.html[m
+[1mindex 3a1eff4..55fc4c4 100644[m
+[1m--- a/lists/templates/home.html[m
+[1m+++ b/lists/templates/home.html[m
+[36m@@ -1,13 +1,6 @@[m
+[31m-<html>[m
+[31m-  <head>[m
+[31m-    <title>To-Do lists</title>[m
+[31m-  </head>[m
+[32m+[m[32m{% extends 'base.html' %}[m
+[32m+[m
+[32m+[m[32m{% block header_text %}Start a new To-Do list{% endblock %}[m
+[32m+[m
+[32m+[m[32m{% block form_action %}/lists/new{% endblock %}[m
+ [m
+[31m-  <body>[m
+[31m-    <h1>Start a new To-Do list</h1>[m
+[31m-    <form method="POST" action="/lists/new">[m
+[31m-      <input name="item_text" id="id_new_item" placeholder="Enter a to-do item" />[m
+[31m-      {% csrf_token %}[m
+[31m-    </form>[m
+[31m-  </body>[m
+[31m-</html>[m
+[1mdiff --git a/lists/templates/list.html b/lists/templates/list.html[m
+[1mindex 304e72e..e63da62 100644[m
+[1m--- a/lists/templates/list.html[m
+[1m+++ b/lists/templates/list.html[m
+[36m@@ -1,18 +1,13 @@[m
+[31m-<html>[m
+[31m-  <head>[m
+[31m-    <title>To-Do lists</title>[m
+[31m-  </head>[m
+[31m-  <body>[m
+[31m-    <h1>Your To-Do list</h1>[m
+[31m-    <form method="POST" action="/lists/{{ list.id }}/add_item">[m
+[31m-      <input name="item_text" id="id_new_item" placeholder="Enter a to-do item" />[m
+[31m-      {% csrf_token %}[m
+[31m-    </form>[m
+[32m+[m[32m{% extends 'base.html' %}[m
+ [m
+[31m-    <table id="id_list_table">[m
+[32m+[m[32m{% block header_text %}Your To-Do list{% endblock %}[m
+[32m+[m
+[32m+[m[32m{% block form_action %}/lists/{{ list.id }}/add_item{% endblock %}[m
+[32m+[m
+[32m+[m[32m{% block table %}[m
+[32m+[m[32m  <table id="id_list_table" class="table">[m
+     {% for item in list.item_set.all %}[m
+       <tr><td>{{ forloop.counter }}: {{ item.text }}</td></tr>[m
+     {% endfor %}[m
+   </table>[m
+[31m-  </body>[m
+[31m-</html>[m
+[32m+[m[32m{% endblock %}[m
+[1mdiff --git a/superlists/settings.py b/superlists/settings.py[m
+[1mindex 1d36d93..5370488 100644[m
+[1m--- a/superlists/settings.py[m
+[1m+++ b/superlists/settings.py[m
+[36m@@ -31,7 +31,7 @@[m [mALLOWED_HOSTS = [][m
+ # Application definition[m
+ [m
+ INSTALLED_APPS = [[m
+[31m-    'django.contrib.admin',[m
+[32m+[m[32m    #'django.contrib.admin',[m
+     'django.contrib.auth',[m
+     'django.contrib.contenttypes',[m
+     'django.contrib.sessions',[m
+[36m@@ -119,3 +119,4 @@[m [mUSE_TZ = True[m
+ # https://docs.djangoproject.com/en/1.11/howto/static-files/[m
+ [m
+ STATIC_URL = '/static/'[m
+[32m+[m[32mSTATIC_ROOT = os.path.join(BASE_DIR, 'static')[m
